@@ -1,7 +1,5 @@
-extern crate inkwell;
-
-use self::inkwell::context::Context;
-use self::inkwell::values::InstructionOpcode;
+use inkwell::context::Context;
+use inkwell::values::InstructionOpcode;
 
 #[test]
 fn test_basic_block_ordering() {
@@ -70,14 +68,10 @@ fn test_basic_block_ordering() {
     let bb3 = function.get_first_basic_block().unwrap();
 
     assert_eq!(bb3, basic_block3);
-
-    #[cfg(not(any(feature = "llvm3-6", feature = "llvm3-7", feature = "llvm3-8")))]
-    {
-        assert_eq!(basic_block.get_name().to_str(), Ok("entry"));
-        assert_eq!(basic_block2.get_name().to_str(), Ok("block2"));
-        assert_eq!(basic_block3.get_name().to_str(), Ok("block3"));
-        assert_eq!(basic_block5.get_name().to_str(), Ok("block5"));
-    }
+    assert_eq!(basic_block.get_name().to_str(), Ok("entry"));
+    assert_eq!(basic_block2.get_name().to_str(), Ok("block2"));
+    assert_eq!(basic_block3.get_name().to_str(), Ok("block3"));
+    assert_eq!(basic_block5.get_name().to_str(), Ok("block5"));
 }
 
 #[test]
@@ -98,8 +92,9 @@ fn test_get_basic_blocks() {
 
     let basic_block = context.append_basic_block(function, "entry");
 
-    let last_basic_block = function.get_last_basic_block()
-                                   .expect("Did not find expected basic block");
+    let last_basic_block = function
+        .get_last_basic_block()
+        .expect("Did not find expected basic block");
 
     assert_eq!(last_basic_block, basic_block);
 
@@ -130,9 +125,18 @@ fn test_get_terminator() {
 
     builder.build_return(None);
 
-    assert_eq!(basic_block.get_terminator().unwrap().get_opcode(), InstructionOpcode::Return);
-    assert_eq!(basic_block.get_first_instruction().unwrap().get_opcode(), InstructionOpcode::Return);
-    assert_eq!(basic_block.get_last_instruction().unwrap().get_opcode(), InstructionOpcode::Return);
+    assert_eq!(
+        basic_block.get_terminator().unwrap().get_opcode(),
+        InstructionOpcode::Return
+    );
+    assert_eq!(
+        basic_block.get_first_instruction().unwrap().get_opcode(),
+        InstructionOpcode::Return
+    );
+    assert_eq!(
+        basic_block.get_last_instruction().unwrap().get_opcode(),
+        InstructionOpcode::Return
+    );
     assert_eq!(basic_block.get_last_instruction(), basic_block.get_terminator());
 }
 
@@ -176,7 +180,7 @@ fn test_rauw() {
     builder.position_at_end(entry);
     let branch_inst = builder.build_unconditional_branch(bb1);
 
-    bb1.replace_all_uses_with(&bb1);  // no-op
+    bb1.replace_all_uses_with(&bb1); // no-op
     bb1.replace_all_uses_with(&bb2);
 
     assert_eq!(branch_inst.get_operand(0).unwrap().right().unwrap(), bb2);
@@ -211,7 +215,7 @@ fn test_get_address() {
     let fn_val = module.add_function("my_fn", fn_type, None);
     let entry_bb = context.append_basic_block(fn_val, "entry");
     let next_bb = context.append_basic_block(fn_val, "next");
-    
+
     assert!(unsafe { entry_bb.get_address() }.is_none());
     assert!(unsafe { next_bb.get_address() }.is_some());
 }

@@ -1,22 +1,20 @@
 use llvm_sys::target::{
-    LLVMABIAlignmentOfType, LLVMABISizeOfType, LLVMByteOrder, LLVMByteOrdering,
-    LLVMCallFrameAlignmentOfType, LLVMCopyStringRepOfTargetData, LLVMCreateTargetData,
-    LLVMDisposeTargetData, LLVMElementAtOffset,
-    LLVMIntPtrTypeForASInContext, LLVMIntPtrTypeInContext, LLVMOffsetOfElement, LLVMPointerSize,
-    LLVMPointerSizeForAS, LLVMPreferredAlignmentOfGlobal, LLVMPreferredAlignmentOfType,
-    LLVMSizeOfTypeInBits, LLVMStoreSizeOfType, LLVMTargetDataRef,
+    LLVMABIAlignmentOfType, LLVMABISizeOfType, LLVMByteOrder, LLVMByteOrdering, LLVMCallFrameAlignmentOfType,
+    LLVMCopyStringRepOfTargetData, LLVMCreateTargetData, LLVMDisposeTargetData, LLVMElementAtOffset,
+    LLVMIntPtrTypeForASInContext, LLVMIntPtrTypeInContext, LLVMOffsetOfElement, LLVMPointerSize, LLVMPointerSizeForAS,
+    LLVMPreferredAlignmentOfGlobal, LLVMPreferredAlignmentOfType, LLVMSizeOfTypeInBits, LLVMStoreSizeOfType,
+    LLVMTargetDataRef,
 };
 #[llvm_versions(4.0..=latest)]
 use llvm_sys::target_machine::LLVMCreateTargetDataLayout;
 use llvm_sys::target_machine::{
-    LLVMAddAnalysisPasses, LLVMCodeGenFileType, LLVMCodeGenOptLevel, LLVMCodeModel,
-    LLVMCreateTargetMachine, LLVMDisposeTargetMachine, LLVMGetDefaultTargetTriple,
-    LLVMGetFirstTarget, LLVMGetNextTarget, LLVMGetTargetDescription, LLVMGetTargetFromName,
-    LLVMGetTargetFromTriple, LLVMGetTargetMachineCPU, LLVMGetTargetMachineFeatureString,
-    LLVMGetTargetMachineTarget, LLVMGetTargetMachineTriple, LLVMGetTargetName, LLVMRelocMode,
-    LLVMSetTargetMachineAsmVerbosity, LLVMTargetHasAsmBackend, LLVMTargetHasJIT,
-    LLVMTargetHasTargetMachine, LLVMTargetMachineEmitToFile, LLVMTargetMachineEmitToMemoryBuffer,
-    LLVMTargetMachineRef, LLVMTargetRef,
+    LLVMAddAnalysisPasses, LLVMCodeGenFileType, LLVMCodeGenOptLevel, LLVMCodeModel, LLVMCreateTargetMachine,
+    LLVMDisposeTargetMachine, LLVMGetDefaultTargetTriple, LLVMGetFirstTarget, LLVMGetNextTarget,
+    LLVMGetTargetDescription, LLVMGetTargetFromName, LLVMGetTargetFromTriple, LLVMGetTargetMachineCPU,
+    LLVMGetTargetMachineFeatureString, LLVMGetTargetMachineTarget, LLVMGetTargetMachineTriple, LLVMGetTargetName,
+    LLVMRelocMode, LLVMSetTargetMachineAsmVerbosity, LLVMTargetHasAsmBackend, LLVMTargetHasJIT,
+    LLVMTargetHasTargetMachine, LLVMTargetMachineEmitToFile, LLVMTargetMachineEmitToMemoryBuffer, LLVMTargetMachineRef,
+    LLVMTargetRef,
 };
 use once_cell::sync::Lazy;
 use parking_lot::RwLock;
@@ -29,6 +27,8 @@ use crate::passes::PassManager;
 use crate::support::{to_c_str, LLVMString};
 use crate::types::{AnyType, AsTypeRef, IntType, StructType};
 use crate::values::{AsValueRef, GlobalValue};
+#[cfg(feature = "internal-getters")]
+use crate::LLVMReference;
 use crate::{AddressSpace, OptimizationLevel};
 
 use std::default::Default;
@@ -102,16 +102,14 @@ pub struct TargetTriple {
 
 impl TargetTriple {
     pub(crate) fn new(triple: LLVMString) -> TargetTriple {
-        TargetTriple {
-            triple,
-        }
+        TargetTriple { triple }
     }
 
     pub fn create(triple: &str) -> TargetTriple {
         let c_string = to_c_str(triple);
 
         TargetTriple {
-            triple: LLVMString::create_from_c_str(&c_string)
+            triple: LLVMString::create_from_c_str(&c_string),
         }
     }
 
@@ -237,9 +235,8 @@ impl Target {
     #[cfg(feature = "target-mips")]
     pub fn initialize_mips(config: &InitializationConfig) {
         use llvm_sys::target::{
-            LLVMInitializeMipsAsmParser, LLVMInitializeMipsAsmPrinter,
-            LLVMInitializeMipsDisassembler, LLVMInitializeMipsTarget, LLVMInitializeMipsTargetInfo,
-            LLVMInitializeMipsTargetMC,
+            LLVMInitializeMipsAsmParser, LLVMInitializeMipsAsmPrinter, LLVMInitializeMipsDisassembler,
+            LLVMInitializeMipsTarget, LLVMInitializeMipsTargetInfo, LLVMInitializeMipsTargetMC,
         };
 
         if config.base {
@@ -276,9 +273,8 @@ impl Target {
     #[cfg(feature = "target-aarch64")]
     pub fn initialize_aarch64(config: &InitializationConfig) {
         use llvm_sys::target::{
-            LLVMInitializeAArch64AsmParser, LLVMInitializeAArch64AsmPrinter,
-            LLVMInitializeAArch64Disassembler, LLVMInitializeAArch64Target,
-            LLVMInitializeAArch64TargetInfo, LLVMInitializeAArch64TargetMC,
+            LLVMInitializeAArch64AsmParser, LLVMInitializeAArch64AsmPrinter, LLVMInitializeAArch64Disassembler,
+            LLVMInitializeAArch64Target, LLVMInitializeAArch64TargetInfo, LLVMInitializeAArch64TargetMC,
         };
 
         if config.base {
@@ -312,50 +308,12 @@ impl Target {
         }
     }
 
-    // TODOC: Called AMDGPU in 3.7+
-    #[cfg(feature = "llvm3-6")]
-    pub fn initialize_r600(config: &InitializationConfig) {
-        use llvm_sys::target::{
-            LLVMInitializeR600AsmParser, LLVMInitializeR600AsmPrinter, LLVMInitializeR600Target,
-            LLVMInitializeR600TargetInfo, LLVMInitializeR600TargetMC,
-        };
-
-        if config.base {
-            let _guard = TARGET_LOCK.write();
-            unsafe { LLVMInitializeR600Target() };
-        }
-
-        if config.info {
-            let _guard = TARGET_LOCK.write();
-            unsafe { LLVMInitializeR600TargetInfo() };
-        }
-
-        if config.asm_printer {
-            let _guard = TARGET_LOCK.write();
-            unsafe { LLVMInitializeR600AsmPrinter() };
-        }
-
-        if config.asm_parser {
-            let _guard = TARGET_LOCK.write();
-            unsafe { LLVMInitializeR600AsmParser() };
-        }
-
-        if config.machine_code {
-            let _guard = TARGET_LOCK.write();
-            unsafe { LLVMInitializeR600TargetMC() };
-        }
-
-        // Disassembler Status Unknown
-    }
-
-    // TODOC: Called R600 in 3.6
     #[cfg(feature = "target-amdgpu")]
-    #[llvm_versions(3.7..=latest)]
+    #[llvm_versions(4.0..=latest)]
     pub fn initialize_amd_gpu(config: &InitializationConfig) {
         use llvm_sys::target::{
-            LLVMInitializeAMDGPUAsmParser, LLVMInitializeAMDGPUAsmPrinter,
-            LLVMInitializeAMDGPUTarget, LLVMInitializeAMDGPUTargetInfo,
-            LLVMInitializeAMDGPUTargetMC,
+            LLVMInitializeAMDGPUAsmParser, LLVMInitializeAMDGPUAsmPrinter, LLVMInitializeAMDGPUTarget,
+            LLVMInitializeAMDGPUTargetInfo, LLVMInitializeAMDGPUTargetMC,
         };
 
         if config.base {
@@ -389,9 +347,8 @@ impl Target {
     #[cfg(feature = "target-systemz")]
     pub fn initialize_system_z(config: &InitializationConfig) {
         use llvm_sys::target::{
-            LLVMInitializeSystemZAsmParser, LLVMInitializeSystemZAsmPrinter,
-            LLVMInitializeSystemZDisassembler, LLVMInitializeSystemZTarget,
-            LLVMInitializeSystemZTargetInfo, LLVMInitializeSystemZTargetMC,
+            LLVMInitializeSystemZAsmParser, LLVMInitializeSystemZAsmPrinter, LLVMInitializeSystemZDisassembler,
+            LLVMInitializeSystemZTarget, LLVMInitializeSystemZTargetInfo, LLVMInitializeSystemZTargetMC,
         };
 
         if config.base {
@@ -428,9 +385,8 @@ impl Target {
     #[cfg(feature = "target-hexagon")]
     pub fn initialize_hexagon(config: &InitializationConfig) {
         use llvm_sys::target::{
-            LLVMInitializeHexagonAsmPrinter, LLVMInitializeHexagonDisassembler,
-            LLVMInitializeHexagonTarget, LLVMInitializeHexagonTargetInfo,
-            LLVMInitializeHexagonTargetMC,
+            LLVMInitializeHexagonAsmPrinter, LLVMInitializeHexagonDisassembler, LLVMInitializeHexagonTarget,
+            LLVMInitializeHexagonTargetInfo, LLVMInitializeHexagonTargetMC,
         };
 
         if config.base {
@@ -464,8 +420,8 @@ impl Target {
     #[cfg(feature = "target-nvptx")]
     pub fn initialize_nvptx(config: &InitializationConfig) {
         use llvm_sys::target::{
-            LLVMInitializeNVPTXAsmPrinter, LLVMInitializeNVPTXTarget,
-            LLVMInitializeNVPTXTargetInfo, LLVMInitializeNVPTXTargetMC,
+            LLVMInitializeNVPTXAsmPrinter, LLVMInitializeNVPTXTarget, LLVMInitializeNVPTXTargetInfo,
+            LLVMInitializeNVPTXTargetMC,
         };
 
         if config.base {
@@ -493,34 +449,11 @@ impl Target {
         // Disassembler status unknown
     }
 
-    #[llvm_versions(3.6..=3.8)]
-    pub fn initialize_cpp_backend(config: &InitializationConfig) {
-        use llvm_sys::target::{
-            LLVMInitializeCppBackendTarget, LLVMInitializeCppBackendTargetInfo,
-            LLVMInitializeCppBackendTargetMC,
-        };
-
-        if config.base {
-            let _guard = TARGET_LOCK.write();
-            unsafe { LLVMInitializeCppBackendTarget() };
-        }
-
-        if config.info {
-            let _guard = TARGET_LOCK.write();
-            unsafe { LLVMInitializeCppBackendTargetInfo() };
-        }
-
-        if config.machine_code {
-            let _guard = TARGET_LOCK.write();
-            unsafe { LLVMInitializeCppBackendTargetMC() };
-        }
-    }
-
     #[cfg(feature = "target-msp430")]
     pub fn initialize_msp430(config: &InitializationConfig) {
         use llvm_sys::target::{
-            LLVMInitializeMSP430AsmPrinter, LLVMInitializeMSP430Target,
-            LLVMInitializeMSP430TargetInfo, LLVMInitializeMSP430TargetMC,
+            LLVMInitializeMSP430AsmPrinter, LLVMInitializeMSP430Target, LLVMInitializeMSP430TargetInfo,
+            LLVMInitializeMSP430TargetMC,
         };
 
         if config.base {
@@ -551,8 +484,8 @@ impl Target {
     #[cfg(feature = "target-xcore")]
     pub fn initialize_x_core(config: &InitializationConfig) {
         use llvm_sys::target::{
-            LLVMInitializeXCoreAsmPrinter, LLVMInitializeXCoreDisassembler,
-            LLVMInitializeXCoreTarget, LLVMInitializeXCoreTargetInfo, LLVMInitializeXCoreTargetMC,
+            LLVMInitializeXCoreAsmPrinter, LLVMInitializeXCoreDisassembler, LLVMInitializeXCoreTarget,
+            LLVMInitializeXCoreTargetInfo, LLVMInitializeXCoreTargetMC,
         };
 
         if config.base {
@@ -586,9 +519,8 @@ impl Target {
     #[cfg(feature = "target-powerpc")]
     pub fn initialize_power_pc(config: &InitializationConfig) {
         use llvm_sys::target::{
-            LLVMInitializePowerPCAsmParser, LLVMInitializePowerPCAsmPrinter,
-            LLVMInitializePowerPCDisassembler, LLVMInitializePowerPCTarget,
-            LLVMInitializePowerPCTargetInfo, LLVMInitializePowerPCTargetMC,
+            LLVMInitializePowerPCAsmParser, LLVMInitializePowerPCAsmPrinter, LLVMInitializePowerPCDisassembler,
+            LLVMInitializePowerPCTarget, LLVMInitializePowerPCTargetInfo, LLVMInitializePowerPCTargetMC,
         };
 
         if config.base {
@@ -625,9 +557,8 @@ impl Target {
     #[cfg(feature = "target-sparc")]
     pub fn initialize_sparc(config: &InitializationConfig) {
         use llvm_sys::target::{
-            LLVMInitializeSparcAsmParser, LLVMInitializeSparcAsmPrinter,
-            LLVMInitializeSparcDisassembler, LLVMInitializeSparcTarget,
-            LLVMInitializeSparcTargetInfo, LLVMInitializeSparcTargetMC,
+            LLVMInitializeSparcAsmParser, LLVMInitializeSparcAsmPrinter, LLVMInitializeSparcDisassembler,
+            LLVMInitializeSparcTarget, LLVMInitializeSparcTargetInfo, LLVMInitializeSparcTargetMC,
         };
 
         if config.base {
@@ -661,9 +592,7 @@ impl Target {
         }
     }
 
-    // TODOC: Disassembler only supported in LLVM 4.0+
     #[cfg(feature = "target-bpf")]
-    #[llvm_versions(3.7..=latest)]
     pub fn initialize_bpf(config: &InitializationConfig) {
         use llvm_sys::target::{
             LLVMInitializeBPFAsmPrinter, LLVMInitializeBPFTarget, LLVMInitializeBPFTargetInfo,
@@ -687,14 +616,11 @@ impl Target {
 
         // No asm parser
 
-        #[cfg(not(any(feature = "llvm3-7", feature = "llvm3-8", feature = "llvm3-9")))]
-        {
-            if config.disassembler {
-                use llvm_sys::target::LLVMInitializeBPFDisassembler;
+        if config.disassembler {
+            use llvm_sys::target::LLVMInitializeBPFDisassembler;
 
-                let _guard = TARGET_LOCK.write();
-                unsafe { LLVMInitializeBPFDisassembler() };
-            }
+            let _guard = TARGET_LOCK.write();
+            unsafe { LLVMInitializeBPFDisassembler() };
         }
 
         if config.machine_code {
@@ -707,9 +633,8 @@ impl Target {
     #[llvm_versions(4.0..=latest)]
     pub fn initialize_lanai(config: &InitializationConfig) {
         use llvm_sys::target::{
-            LLVMInitializeLanaiAsmParser, LLVMInitializeLanaiAsmPrinter,
-            LLVMInitializeLanaiDisassembler, LLVMInitializeLanaiTarget,
-            LLVMInitializeLanaiTargetInfo, LLVMInitializeLanaiTargetMC,
+            LLVMInitializeLanaiAsmParser, LLVMInitializeLanaiAsmPrinter, LLVMInitializeLanaiDisassembler,
+            LLVMInitializeLanaiTarget, LLVMInitializeLanaiTargetInfo, LLVMInitializeLanaiTargetMC,
         };
 
         if config.base {
@@ -829,8 +754,8 @@ impl Target {
 
     pub fn initialize_native(config: &InitializationConfig) -> Result<(), String> {
         use llvm_sys::target::{
-            LLVM_InitializeNativeAsmParser, LLVM_InitializeNativeAsmPrinter,
-            LLVM_InitializeNativeDisassembler, LLVM_InitializeNativeTarget,
+            LLVM_InitializeNativeAsmParser, LLVM_InitializeNativeAsmPrinter, LLVM_InitializeNativeDisassembler,
+            LLVM_InitializeNativeTarget,
         };
 
         if config.base {
@@ -875,9 +800,8 @@ impl Target {
 
     pub fn initialize_all(config: &InitializationConfig) {
         use llvm_sys::target::{
-            LLVM_InitializeAllAsmParsers, LLVM_InitializeAllAsmPrinters,
-            LLVM_InitializeAllDisassemblers, LLVM_InitializeAllTargetInfos,
-            LLVM_InitializeAllTargetMCs, LLVM_InitializeAllTargets,
+            LLVM_InitializeAllAsmParsers, LLVM_InitializeAllAsmPrinters, LLVM_InitializeAllDisassemblers,
+            LLVM_InitializeAllTargetInfos, LLVM_InitializeAllTargetMCs, LLVM_InitializeAllTargets,
         };
 
         if config.base {
@@ -958,9 +882,7 @@ impl Target {
             return None;
         }
 
-        unsafe {
-            Some(TargetMachine::new(target_machine))
-        }
+        unsafe { Some(TargetMachine::new(target_machine)) }
     }
 
     pub fn get_first() -> Option<Self> {
@@ -973,9 +895,7 @@ impl Target {
             return None;
         }
 
-        unsafe {
-            Some(Target::new(target))
-        }
+        unsafe { Some(Target::new(target)) }
     }
 
     pub fn get_next(&self) -> Option<Self> {
@@ -985,9 +905,7 @@ impl Target {
             return None;
         }
 
-        unsafe {
-            Some(Target::new(target))
-        }
+        unsafe { Some(Target::new(target)) }
     }
 
     pub fn get_name(&self) -> &CStr {
@@ -1014,9 +932,7 @@ impl Target {
             return None;
         }
 
-        unsafe {
-            Some(Target::new(target))
-        }
+        unsafe { Some(Target::new(target)) }
     }
 
     pub fn from_triple(triple: &TargetTriple) -> Result<Self, LLVMString> {
@@ -1034,9 +950,7 @@ impl Target {
             }
         }
 
-        unsafe {
-            Ok(Target::new(target))
-        }
+        unsafe { Ok(Target::new(target)) }
     }
 
     pub fn has_jit(&self) -> bool {
@@ -1065,9 +979,7 @@ impl TargetMachine {
     }
 
     pub fn get_target(&self) -> Target {
-        unsafe {
-            Target::new(LLVMGetTargetMachineTarget(self.target_machine))
-        }
+        unsafe { Target::new(LLVMGetTargetMachineTarget(self.target_machine)) }
     }
 
     pub fn get_triple(&self) -> TargetTriple {
@@ -1111,9 +1023,7 @@ impl TargetMachine {
     pub fn get_host_cpu_name() -> LLVMString {
         use llvm_sys::target_machine::LLVMGetHostCPUName;
 
-        unsafe {
-            LLVMString::new(LLVMGetHostCPUName())
-        }
+        unsafe { LLVMString::new(LLVMGetHostCPUName()) }
     }
 
     /// Gets a comma separated list of supported features by the host CPU.
@@ -1125,15 +1035,11 @@ impl TargetMachine {
     pub fn get_host_cpu_features() -> LLVMString {
         use llvm_sys::target_machine::LLVMGetHostCPUFeatures;
 
-        unsafe {
-            LLVMString::new(LLVMGetHostCPUFeatures())
-        }
+        unsafe { LLVMString::new(LLVMGetHostCPUFeatures()) }
     }
 
     pub fn get_cpu(&self) -> LLVMString {
-        unsafe {
-            LLVMString::new(LLVMGetTargetMachineCPU(self.target_machine))
-        }
+        unsafe { LLVMString::new(LLVMGetTargetMachineCPU(self.target_machine)) }
     }
 
     pub fn get_feature_string(&self) -> &CStr {
@@ -1143,9 +1049,7 @@ impl TargetMachine {
     /// Create TargetData from this target machine
     #[llvm_versions(4.0..=latest)]
     pub fn get_target_data(&self) -> TargetData {
-        unsafe {
-            TargetData::new(LLVMCreateTargetDataLayout(self.target_machine))
-        }
+        unsafe { TargetData::new(LLVMCreateTargetDataLayout(self.target_machine)) }
     }
 
     pub fn set_asm_verbosity(&self, verbosity: bool) {
@@ -1191,11 +1095,7 @@ impl TargetMachine {
     ///
     /// let buffer = target_machine.write_to_memory_buffer(&module, FileType::Assembly).unwrap();
     /// ```
-    pub fn write_to_memory_buffer(
-        &self,
-        module: &Module,
-        file_type: FileType,
-    ) -> Result<MemoryBuffer, LLVMString> {
+    pub fn write_to_memory_buffer(&self, module: &Module, file_type: FileType) -> Result<MemoryBuffer, LLVMString> {
         let mut memory_buffer = ptr::null_mut();
         let mut err_string = MaybeUninit::uninit();
         let return_code = unsafe {
@@ -1257,15 +1157,8 @@ impl TargetMachine {
     ///
     /// assert!(target_machine.write_to_file(&module, FileType::Object, &path).is_ok());
     /// ```
-    pub fn write_to_file(
-        &self,
-        module: &Module,
-        file_type: FileType,
-        path: &Path,
-    ) -> Result<(), LLVMString> {
-        let path = path
-            .to_str()
-            .expect("Did not find a valid Unicode path string");
+    pub fn write_to_file(&self, module: &Module, file_type: FileType, path: &Path) -> Result<(), LLVMString> {
+        let path = path.to_str().expect("Did not find a valid Unicode path string");
         let path_c_string = to_c_str(path);
         let mut err_string = MaybeUninit::uninit();
         let return_code = unsafe {
@@ -1314,9 +1207,7 @@ impl TargetData {
     pub(crate) unsafe fn new(target_data: LLVMTargetDataRef) -> TargetData {
         assert!(!target_data.is_null());
 
-        TargetData {
-            target_data,
-        }
+        TargetData { target_data }
     }
 
     /// Gets the `IntType` representing a bit width of a pointer. It will be assigned the referenced context.
@@ -1344,24 +1235,16 @@ impl TargetData {
     ) -> IntType<'ctx> {
         let int_type_ptr = match address_space {
             Some(address_space) => unsafe {
-                LLVMIntPtrTypeForASInContext(
-                    context.context,
-                    self.target_data,
-                    address_space as u32,
-                )
+                LLVMIntPtrTypeForASInContext(context.context, self.target_data, address_space as u32)
             },
             None => unsafe { LLVMIntPtrTypeInContext(context.context, self.target_data) },
         };
 
-        unsafe {
-            IntType::new(int_type_ptr)
-        }
+        unsafe { IntType::new(int_type_ptr) }
     }
 
     pub fn get_data_layout(&self) -> DataLayout {
-        unsafe {
-            DataLayout::new_owned(LLVMCopyStringRepOfTargetData(self.target_data))
-        }
+        unsafe { DataLayout::new_owned(LLVMCopyStringRepOfTargetData(self.target_data)) }
     }
 
     // REVIEW: Does this only work if Sized?
@@ -1373,9 +1256,7 @@ impl TargetData {
     pub fn create(str_repr: &str) -> TargetData {
         let c_string = to_c_str(str_repr);
 
-        unsafe {
-            TargetData::new(LLVMCreateTargetData(c_string.as_ptr()))
-        }
+        unsafe { TargetData::new(LLVMCreateTargetData(c_string.as_ptr())) }
     }
 
     pub fn get_byte_ordering(&self) -> ByteOrdering {
@@ -1389,9 +1270,7 @@ impl TargetData {
 
     pub fn get_pointer_byte_size(&self, address_space: Option<AddressSpace>) -> u32 {
         match address_space {
-            Some(address_space) => unsafe {
-                LLVMPointerSizeForAS(self.target_data, address_space as u32)
-            },
+            Some(address_space) => unsafe { LLVMPointerSizeForAS(self.target_data, address_space as u32) },
             None => unsafe { LLVMPointerSize(self.target_data) },
         }
     }
@@ -1442,5 +1321,12 @@ impl TargetData {
 impl Drop for TargetData {
     fn drop(&mut self) {
         unsafe { LLVMDisposeTargetData(self.target_data) }
+    }
+}
+
+#[cfg(feature = "internal-getters")]
+impl LLVMReference<LLVMTargetMachineRef> for TargetMachine {
+    unsafe fn get_ref(&self) -> LLVMTargetMachineRef {
+        self.target_machine
     }
 }

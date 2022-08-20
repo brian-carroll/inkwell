@@ -1,9 +1,7 @@
-extern crate inkwell;
-
-use self::inkwell::OptimizationLevel;
-use self::inkwell::context::Context;
-use self::inkwell::targets::{InitializationConfig, Target};
-use self::inkwell::execution_engine::JitFunction;
+use inkwell::context::Context;
+use inkwell::execution_engine::JitFunction;
+use inkwell::targets::{InitializationConfig, Target};
+use inkwell::OptimizationLevel;
 
 #[test]
 fn test_tari_example() {
