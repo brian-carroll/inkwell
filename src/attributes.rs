@@ -104,6 +104,7 @@ impl Attribute {
     /// assert_eq!(Attribute::get_named_enum_kind_id("align"), 1);
     /// assert_eq!(Attribute::get_named_enum_kind_id("builtin"), 5);
     /// ```
+    #[llvm_versions(4.0..12.0)]
     pub fn get_named_enum_kind_id(name: &str) -> u32 {
         unsafe {
             LLVMGetEnumAttributeKindForName(name.as_ptr() as *const ::libc::c_char, name.len())
@@ -147,6 +148,16 @@ impl Attribute {
         unsafe {
             LLVMGetEnumAttributeKind(self.attribute)
         }
+    }
+
+    #[llvm_versions(4.0..12.0)]
+    fn get_enum_kind_id_is_valid(self) -> bool {
+        self.is_enum()
+    }
+
+    #[llvm_versions(12.0..=latest)]
+    fn get_enum_kind_id_is_valid(self) -> bool {
+        self.is_enum() || self.is_type()
     }
 
     /// Gets the last enum kind id associated with builtin names.
