@@ -104,7 +104,6 @@ impl Attribute {
     /// assert_eq!(Attribute::get_named_enum_kind_id("align"), 1);
     /// assert_eq!(Attribute::get_named_enum_kind_id("builtin"), 5);
     /// ```
-    #[llvm_versions(4.0..12.0)]
     pub fn get_named_enum_kind_id(name: &str) -> u32 {
         unsafe {
             LLVMGetEnumAttributeKindForName(name.as_ptr() as *const ::libc::c_char, name.len())
